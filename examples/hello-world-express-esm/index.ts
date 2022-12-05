@@ -1,7 +1,8 @@
-import { NodeSDK } from "@opentelemetry/sdk-node";
-import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
-import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+// import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
+import {
+  InstrumentationBase,
+  registerInstrumentations,
+} from "@opentelemetry/instrumentation";
 import {
   diag,
   DiagConsoleLogger,
@@ -10,27 +11,33 @@ import {
   trace,
   Tracer,
 } from "@opentelemetry/api";
+import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
-const traceExporter = new OTLPTraceExporter({
-  url: "https://api.honeycomb.io/v1/traces",
-  headers: {
-    "x-honeycomb-team": process.env.HONEYCOMB_API_KEY || "",
-  },
-});
+const tracerProvider = new NodeTracerProvider();
 
-const sdk: NodeSDK = new NodeSDK({
-  traceExporter,
-  instrumentations: [new HttpInstrumentation(), new ExpressInstrumentation()],
-});
+tracerProvider.register();
 
-sdk
-  .start()
-  .then(() => {
-    console.log("Tracing initialized");
-  })
-  .catch((error) => console.log("Error initializing tracing", error));
+class TestAutoInstrumentation extends InstrumentationBase {
+  constructor() {
+    super("test-autoinstrumentions", "0.0.1");
+  }
+  init() {
+    console.log("hello!");
+  }
+  enable() {}
+  disable() {}
+}
+
+registerInstrumentations({
+  instrumentations: [
+    new HttpInstrumentation(),
+    // new ExpressInstrumentation(),
+    new TestAutoInstrumentation(),
+  ],
+});
 
 import express, { Express, NextFunction, Request, Response } from "express";
 const app: Express = express();

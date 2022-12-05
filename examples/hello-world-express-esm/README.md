@@ -2,29 +2,21 @@
 
 Steps:
 
-- adjust `package.json` for each instrumentation library to use local code (and install and compile)
-- follow steps for using app as CommonJS (install, build, start, curl)
-- follow steps for using app as ESM (set to module, clean, build, start, curl)
+- install lerna and run npm run bootstrap to symlink dependencies for local code
+- follow steps for using app as CommonJS (clean, build, start, curl)
+- follow steps for using app as ESM (set to module, clean, build, start, curl... `npm run doit`)
 
 ## use local code for other packages:
 
-adjust dependencies in other packages to ensure they're all using the same code from this PR (`npm install` and `npm run compile` afterward):
+install lerna and run npm run bootstrap to symlink dependencies for local code
 
-`experimental/packages/opentelemetry-sdk-node/package.json` and `experimental/packages/opentelemetry-instrumentation-http/package.json`:
+note: do not run `npm install` after this - notice the node_modules are symlinked
 
-```json
-"@opentelemetry/instrumentation": "file:../opentelemetry-instrumentation",
-```
-
-in local clone of `opentelemetry-js-contrib/plugins/node/opentelemetry-instrumentation-express/package.json` :
-
-```json
-"@opentelemetry/instrumentation": "file:../../../../opentelemetry-js/experimental/packages/opentelemetry-instrumentation",
-```
+note: adding express instrumentation from contrib doesn't seem to work well with this lerna bootstrap (likely just dependency conflicts)
 
 ## use app as CommonJS:
 
-`npm install`
+`npm run clean`
 
 `npm run build`
 
@@ -32,21 +24,23 @@ in local clone of `opentelemetry-js-contrib/plugins/node/opentelemetry-instrumen
 
 `curl localhost:3000`
 
-see 5 total spans: 1 http, 3 express, 1 manual
+see 2 total spans: 1 http, 1 manual
 
 ## use app as ESModules:
-
-`npm install`
 
 in `tsconfig.json`, change `"module": "CommonJS"` to `"module": "ESNext"`
 
 In `package.json`, change `"type": "commonjs",` to `"type": "module",`
 
-`npm run clean`
+run `npm run doit` to clean, build, and start with the experimental loader.
 
-`npm run build`
+the `npm run doit` script runs:
 
-`npm run start-esm`
+```sh
+npm run clean
+npm run build
+npm run start-esm
+```
 
 `curl localhost:3000`
 
