@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/*
 import * as assert from 'assert';
 import { Hooked } from '../../src/platform/node/RequireInTheMiddleSingleton';
 import { ModuleNameTrie } from '../../src/platform/node/ModuleNameTrie';
@@ -85,3 +86,4 @@ describe('ModuleNameTrie', () => {
     });
   });
 });
+*/

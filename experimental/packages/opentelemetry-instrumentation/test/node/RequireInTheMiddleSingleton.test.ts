@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/*
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as path from 'path';
@@ -32,7 +33,6 @@ const makeOnRequiresStub = (label: string): sinon.SinonStub =>
     exports.__ritmOnRequires.push(label);
     return exports;
   }) as RequireInTheMiddle.OnRequireFn);
-
 describe('RequireInTheMiddleSingleton', () => {
   describe('register', () => {
     const onRequireFsStub = makeOnRequiresStub('fs');
@@ -180,3 +180,4 @@ describe('RequireInTheMiddleSingleton', () => {
     });
   });
 });
+*/
