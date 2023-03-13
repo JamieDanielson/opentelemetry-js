@@ -22,6 +22,9 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 
+import http from 'http';
+console.log(http.request);
+
 const serviceName = 'hello-esm';
 
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
