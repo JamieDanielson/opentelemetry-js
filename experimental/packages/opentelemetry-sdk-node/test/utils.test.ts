@@ -18,11 +18,16 @@ import {
   getPropagatorFromEnv,
   getKeyListFromObjectArray,
   getPropagatorFromConfigFactory,
+  getSpanProcessorsFromConfigFactory,
 } from '../src/utils';
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 import { diag } from '@opentelemetry/api';
 import { ConfigurationModel } from '@opentelemetry/configuration';
+import {
+  SimpleSpanProcessor,
+  BatchSpanProcessor,
+} from '@opentelemetry/sdk-trace-base';
 
 describe('getPropagatorFromEnv', function () {
   afterEach(() => {
@@ -199,3 +204,113 @@ describe('getStringKeyListFromObjectArray', function () {
   });
 });
 
+describe('getSpanProcessorsFromConfigFactory', function () {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it('should return undefined when no tracer_provider is configured', function () {
+    const config: ConfigurationModel = {};
+    const processors = getSpanProcessorsFromConfigFactory(config);
+    assert.strictEqual(processors, undefined);
+  });
+
+  it('should return undefined when processors array is empty', function () {
+    const config: ConfigurationModel = {
+      tracer_provider: {
+        processors: [],
+      },
+    };
+    const processors = getSpanProcessorsFromConfigFactory(config);
+    assert.strictEqual(processors, undefined);
+  });
+
+  it('should create SimpleSpanProcessor with ConsoleSpanExporter', function () {
+    const config: ConfigurationModel = {
+      tracer_provider: {
+        processors: [
+          {
+            simple: {
+              exporter: {
+                console: {},
+              },
+            },
+          },
+        ],
+      },
+    };
+    const processors = getSpanProcessorsFromConfigFactory(config);
+    assert.ok(processors);
+    assert.strictEqual(processors.length, 1);
+    assert.ok(processors[0] instanceof SimpleSpanProcessor);
+  });
+
+  it('should create BatchSpanProcessor with ConsoleSpanExporter', function () {
+    const config: ConfigurationModel = {
+      tracer_provider: {
+        processors: [
+          {
+            batch: {
+              exporter: {
+                console: {},
+              },
+            },
+          },
+        ],
+      },
+    };
+    const processors = getSpanProcessorsFromConfigFactory(config);
+    assert.ok(processors);
+    assert.strictEqual(processors.length, 1);
+    assert.ok(processors[0] instanceof BatchSpanProcessor);
+  });
+
+  it('should warn when exporter type is unknown', function () {
+    const warnStub = sinon.stub(diag, 'warn');
+    const config: ConfigurationModel = {
+      tracer_provider: {
+        processors: [
+          {
+            simple: {
+              exporter: {} as any,
+            },
+          },
+        ],
+      },
+    };
+    const processors = getSpanProcessorsFromConfigFactory(config);
+    assert.strictEqual(processors, undefined);
+    sinon.assert.calledWith(
+      warnStub,
+      'Unable to create span exporter from configuration for simple processor.'
+    );
+  });
+
+  it('should create multiple processors', function () {
+    const config: ConfigurationModel = {
+      tracer_provider: {
+        processors: [
+          {
+            simple: {
+              exporter: {
+                console: {},
+              },
+            },
+          },
+          {
+            batch: {
+              exporter: {
+                console: {},
+              },
+            },
+          },
+        ],
+      },
+    };
+    const processors = getSpanProcessorsFromConfigFactory(config);
+    assert.ok(processors);
+    assert.strictEqual(processors.length, 2);
+    assert.ok(processors[0] instanceof SimpleSpanProcessor);
+    assert.ok(processors[1] instanceof BatchSpanProcessor);
+  });
+});

@@ -55,4 +55,5 @@ export interface NodeSDKConfiguration {
 export interface SDKOptions {
   instrumentations?: (Instrumentation | Instrumentation[])[];
   textMapPropagator?: TextMapPropagator | null;
+  spanProcessors?: SpanProcessor[];
 }

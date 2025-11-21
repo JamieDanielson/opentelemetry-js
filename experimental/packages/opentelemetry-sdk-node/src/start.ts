@@ -17,22 +17,24 @@ import {
   ConfigFactory,
   createConfigFactory,
 } from '@opentelemetry/configuration';
-import { diag, DiagConsoleLogger } from '@opentelemetry/api';
+import { diag, DiagConsoleLogger, trace } from '@opentelemetry/api';
 import {
   getPropagatorFromConfigFactory,
+  getSpanProcessorsFromConfigFactory,
   setupDefaultContextManager,
   setupPropagator,
 } from './utils';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import type { SDKOptions } from './types';
 
 /**
  * @experimental Function to start the OpenTelemetry Node SDK
  * @param sdkOptions
  */
-export function startNodeSDK(sdkOptions: SDKOptions): {
+export async function startNodeSDK(sdkOptions: SDKOptions): Promise<{
   shutdown: () => Promise<void>;
-} {
+}> {
   const configFactory: ConfigFactory = createConfigFactory();
   const config = configFactory.getConfigModel();
 
@@ -55,8 +57,24 @@ export function startNodeSDK(sdkOptions: SDKOptions): {
           getPropagatorFromConfigFactory(config))
   );
 
+  // Setup TracerProvider
+  let tracerProvider: NodeTracerProvider | undefined;
+  const spanProcessors =
+    sdkOptions?.spanProcessors ?? getSpanProcessorsFromConfigFactory(config);
+
+  if (spanProcessors && spanProcessors.length > 0) {
+
+    tracerProvider = new NodeTracerProvider({
+      spanProcessors,
+    });
+    trace.setGlobalTracerProvider(tracerProvider);
+  }
+
   const shutdownFn = async () => {
     const promises: Promise<unknown>[] = [];
+    if (tracerProvider) {
+      promises.push(tracerProvider.shutdown());
+    }
     await Promise.all(promises);
   };
   return { shutdown: shutdownFn };

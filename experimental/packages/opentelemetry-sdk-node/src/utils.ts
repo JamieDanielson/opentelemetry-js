@@ -50,7 +50,10 @@ import {
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { JaegerPropagator } from '@opentelemetry/propagator-jaeger';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
-import { ConfigurationModel } from '@opentelemetry/configuration';
+import {
+  ConfigurationModel,
+  SpanExporterModel as SpanExporterConfig,
+} from '@opentelemetry/configuration';
 
 const RESOURCE_DETECTOR_ENVIRONMENT = 'env';
 const RESOURCE_DETECTOR_HOST = 'host';
@@ -358,4 +361,140 @@ export function getKeyListFromObjectArray(
   return obj
     .map(item => Object.keys(item))
     .reduce((prev, curr) => prev.concat(curr), []);
+}
+
+/**
+ * Create a SpanExporter from a configuration object
+ * @param exporterConfig - The exporter configuration object
+ */
+function getSpanExporterFromConfig(
+  exporterConfig: SpanExporterConfig
+): SpanExporter | undefined {
+  if ('console' in exporterConfig) {
+    return new ConsoleSpanExporter();
+  }
+
+  if ('zipkin' in exporterConfig) {
+    const zipkinConfig = exporterConfig.zipkin;
+    if (zipkinConfig) {
+      return new ZipkinExporter({
+        url: zipkinConfig.endpoint,
+        ...(zipkinConfig.timeout !== undefined && {
+          timeoutMillis: zipkinConfig.timeout,
+        }),
+      });
+    }
+  }
+
+  if ('otlp_http' in exporterConfig) {
+    const otlpConfig = exporterConfig.otlp_http;
+    if (otlpConfig) {
+      // Convert config to exporter options
+      const headers: Record<string, string> = {};
+      if (otlpConfig.headers) {
+        for (const header of otlpConfig.headers) {
+          if (header.value !== null) {
+            headers[header.name] = header.value;
+          }
+        }
+      }
+
+      // Determine which HTTP exporter based on encoding
+      if (otlpConfig.encoding === 'json') {
+        return new OTLPHttpTraceExporter({
+          url: otlpConfig.endpoint,
+          headers,
+          timeoutMillis: otlpConfig.timeout,
+        });
+      } else {
+        // Default to protobuf
+        return new OTLPProtoTraceExporter({
+          url: otlpConfig.endpoint,
+          headers,
+          timeoutMillis: otlpConfig.timeout,
+        });
+      }
+    }
+  }
+
+  if ('otlp_grpc' in exporterConfig) {
+    const otlpConfig = exporterConfig.otlp_grpc;
+    if (otlpConfig) {
+      const headers: Record<string, string> = {};
+      if (otlpConfig.headers) {
+        for (const header of otlpConfig.headers) {
+          if (header.value !== null) {
+            headers[header.name] = header.value;
+          }
+        }
+      }
+
+      return new OTLPGrpcTraceExporter({
+        url: otlpConfig.endpoint,
+        headers,
+        timeoutMillis: otlpConfig.timeout,
+      });
+    }
+  }
+
+  // Unknown or unsupported exporter type
+  return undefined;
+}
+
+/**
+ * Get span processors from configuration factory
+ */
+export function getSpanProcessorsFromConfigFactory(
+  config: ConfigurationModel
+): SpanProcessor[] | undefined {
+  const processors = config.tracer_provider?.processors;
+
+  if (!processors || processors.length === 0) {
+    return undefined;
+  }
+
+  const spanProcessors: SpanProcessor[] = [];
+
+  for (const processorConfig of processors) {
+    if (processorConfig.batch !== undefined) {
+      const batchConfig = processorConfig.batch;
+      const exporter = getSpanExporterFromConfig(batchConfig.exporter);
+
+      if (exporter) {
+        spanProcessors.push(
+          new BatchSpanProcessor(exporter, {
+            scheduledDelayMillis: batchConfig.schedule_delay,
+            exportTimeoutMillis: batchConfig.export_timeout,
+            maxQueueSize: batchConfig.max_queue_size,
+            maxExportBatchSize: batchConfig.max_export_batch_size,
+          })
+        );
+      } else {
+        diag.warn(
+          'Unable to create span exporter from configuration for batch processor.'
+        );
+      }
+    }
+    // Check if it's a simple processor
+    else if (processorConfig.simple !== undefined) {
+      const simpleConfig = processorConfig.simple;
+      const exporter = getSpanExporterFromConfig(simpleConfig.exporter);
+
+      if (exporter) {
+        spanProcessors.push(new SimpleSpanProcessor(exporter));
+      } else {
+        diag.warn(
+          'Unable to create span exporter from configuration for simple processor.'
+        );
+      }
+    } else {
+      diag.warn('Unknown span processor type in configuration.');
+    }
+  }
+
+  if (spanProcessors.length === 0) {
+    return undefined;
+  }
+
+  return spanProcessors;
 }

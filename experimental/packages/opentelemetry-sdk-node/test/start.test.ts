@@ -33,21 +33,22 @@ describe('startNodeSDK', function () {
     Sinon.restore();
   });
 
-  it('should return NOOP_SDK when disabled is true', () => {
+  it('should return NOOP_SDK when disabled is true', async () => {
     const info = Sinon.spy(diag, 'info');
     process.env.OTEL_SDK_DISABLED = 'true';
-    const sdk = startNodeSDK({});
+    const sdk = await startNodeSDK({});
 
     Sinon.assert.calledWith(info, 'OpenTelemetry SDK is disabled');
 
-    sdk.shutdown();
+    await sdk.shutdown();
   });
 
-    const sdk = startNodeSDK({});
+  it('should setup context manager', async () => {
+    const sdk = await startNodeSDK({});
 
     assertDefaultContextManagerRegistered();
 
-    sdk.shutdown();
+    await sdk.shutdown();
   });
 });
 
