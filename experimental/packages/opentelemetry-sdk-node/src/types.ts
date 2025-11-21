@@ -51,3 +51,8 @@ export interface NodeSDKConfiguration {
   spanLimits: SpanLimits;
   idGenerator: IdGenerator;
 }
+
+export interface SDKOptions {
+  instrumentations?: (Instrumentation | Instrumentation[])[];
+  textMapPropagator?: TextMapPropagator | null;
+}
