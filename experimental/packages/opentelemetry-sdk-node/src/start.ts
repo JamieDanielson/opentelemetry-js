@@ -63,7 +63,6 @@ export async function startNodeSDK(sdkOptions: SDKOptions): Promise<{
     sdkOptions?.spanProcessors ?? getSpanProcessorsFromConfigFactory(config);
 
   if (spanProcessors && spanProcessors.length > 0) {
-
     tracerProvider = new NodeTracerProvider({
       spanProcessors,
     });
